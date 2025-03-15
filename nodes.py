@@ -85,3 +85,7 @@ class WanVideoAutoImgResize:
 NODE_CLASS_MAPPINGS = {
     "WanVideoAutoImgResize": WanVideoAutoImgResize
 }
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "WanVideoAutoImgResize": "WanVideo Auto Image Resize"
+}
