@@ -50,7 +50,7 @@ class WanVideoAutoImgResize:
             new_height = generation_height
         
         # Resize the image
-        resized_images = []
+        resized_images = []  # This was missing in the original code
         for i in range(batch_size):
             # Convert to numpy, resize, and convert back to torch
             img = image[i].cpu().numpy()
