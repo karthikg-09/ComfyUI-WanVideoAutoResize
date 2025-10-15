@@ -27,15 +27,19 @@ class WanVideoAutoImgResize:
                 "interpolation": (["Bilinear", "Bicubic", "Lanczos", "Nearest"], {
                     "default": "Bilinear",
                     "tooltip": "Interpolation method: Bilinear (fast), Bicubic (quality), Nearest (fastest), Lanczos (high quality)"
+                }),
+                "dimension_multiple": ("INT", {
+                    "default": 16, "min": 1, "max": 64, "step": 1,
+                    "tooltip": "Ensure output dimensions are multiples of this value (e.g., 8, 16, 32 for optimal performance)"
                 })
             },
             "optional": {
                 "custom_width": ("INT", {
-                    "default": 832, "min": 64, "max": 4096, "step": 8,
+                    "default": 832, "min": 64, "max": 4096, "step": 16,
                     "tooltip": "Custom width (only used when preset is 'Custom')"
                 }),
                 "custom_height": ("INT", {
-                    "default": 480, "min": 64, "max": 4096, "step": 8,
+                    "default": 480, "min": 64, "max": 4096, "step": 16,
                     "tooltip": "Custom height (only used when preset is 'Custom')"
                 })
             }
@@ -96,7 +100,7 @@ class WanVideoAutoImgResize:
             return "square"
         return detected_orientation
     
-    def calculate_resize_dimensions(self, original_width, original_height, target_width, target_height, resize_mode):
+    def calculate_resize_dimensions(self, original_width, original_height, target_width, target_height, resize_mode, dimension_multiple=16):
         """Calculate final dimensions based on resize mode"""
         original_aspect = original_width / original_height
         target_aspect = target_width / target_height
@@ -112,9 +116,9 @@ class WanVideoAutoImgResize:
                 # Fit to height
                 new_height = target_height
                 new_width = int(target_height * original_aspect)
-            # Ensure divisible by 8
-            new_width = (new_width // 8) * 8
-            new_height = (new_height // 8) * 8
+            # Ensure divisible by dimension_multiple
+            new_width = (new_width // dimension_multiple) * dimension_multiple
+            new_height = (new_height // dimension_multiple) * dimension_multiple
             return new_width, new_height, "proportional"
         elif resize_mode == "Crop":
             if original_aspect > target_aspect:
@@ -134,8 +138,8 @@ class WanVideoAutoImgResize:
             else:
                 new_height = target_height
                 new_width = int(target_height * original_aspect)
-            new_width = (new_width // 8) * 8
-            new_height = (new_height // 8) * 8
+            new_width = (new_width // dimension_multiple) * dimension_multiple
+            new_height = (new_height // dimension_multiple) * dimension_multiple
             return new_width, new_height, "padded"
         
         return target_width, target_height, "default"
@@ -256,7 +260,7 @@ class WanVideoAutoImgResize:
         return image[:, start_y:end_y, start_x:end_x, :].contiguous()
 
     def process(self, image, preset_resolution, resize_mode, orientation_priority, pad_color, 
-                interpolation, custom_width=832, custom_height=480):
+                interpolation, dimension_multiple=16, custom_width=832, custom_height=480):
         # Handle different image dimensions with video optimization
         if len(image.shape) == 3:
             image = image.unsqueeze(0)
@@ -290,7 +294,7 @@ class WanVideoAutoImgResize:
         
         # Calculate resize dimensions based on mode
         resize_width, resize_height, resize_info = self.calculate_resize_dimensions(
-            original_width, original_height, target_width, target_height, resize_mode
+            original_width, original_height, target_width, target_height, resize_mode, dimension_multiple
         )
         
         # Fast processing pipeline
@@ -318,8 +322,8 @@ class WanVideoAutoImgResize:
                 temp_height = max(target_height, int(original_height * scale_factor))
                 
                 # Ensure dimensions are efficient for GPU processing
-                temp_width = ((temp_width + 7) // 8) * 8
-                temp_height = ((temp_height + 7) // 8) * 8
+                temp_width = ((temp_width + dimension_multiple - 1) // dimension_multiple) * dimension_multiple
+                temp_height = ((temp_height + dimension_multiple - 1) // dimension_multiple) * dimension_multiple
                 
                 resized = self.resize_image_tensor(image, temp_width, temp_height, interpolation)
                 result = self.apply_crop_fast(resized, target_width, target_height)
