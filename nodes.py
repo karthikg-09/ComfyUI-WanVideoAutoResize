@@ -8,7 +8,7 @@ class WanVideoAutoImgResize:
         return {
             "required": {
             "image": ("IMAGE", {"tooltip": "Image to resize"}),
-                "preset_resolution": (["Custom", "480p", "576p", "720p", "1080p"], {
+                "preset_resolution": (["Custom", "360p", "480p", "576p", "720p", "1080p"], {
                     "default": "720p", 
                     "tooltip": "Industry standard preset resolutions"
                 }),
@@ -54,6 +54,7 @@ class WanVideoAutoImgResize:
     def get_preset_dimensions(self, preset, orientation):
         """Get dimensions for preset resolutions based on orientation"""
         presets = {
+            "360p": (640, 360),    # nHD
             "480p": (854, 480),    # SD
             "576p": (1024, 576),   # PAL
             "720p": (1280, 720),   # HD
@@ -162,8 +163,7 @@ class WanVideoAutoImgResize:
         }
         mode = mode_map.get(interpolation.lower(), 'bilinear')
         
-        # Resize with GPU acceleration
-        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+        with torch.amp.autocast('cuda', enabled=torch.cuda.is_available()):
             if mode == 'bicubic':
                 resized = torch.nn.functional.interpolate(
                     image_gpu,
@@ -223,7 +223,7 @@ class WanVideoAutoImgResize:
             pad_value = 0.0
         
         # Ultra-fast constant padding
-        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+        with torch.amp.autocast('cuda', enabled=torch.cuda.is_available()):
             padded = torch.nn.functional.pad(
                 image_gpu, 
                 (pad_left, pad_right, pad_top, pad_bottom), 
